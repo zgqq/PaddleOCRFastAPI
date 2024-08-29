@@ -12,3 +12,5 @@ class OCRModel(BaseModel):
 
 class Base64PostModel(BaseModel):
     base64_str: str  # base64字符串
+    ocr_det: bool = True  
+    ocr_cls: bool = True 
