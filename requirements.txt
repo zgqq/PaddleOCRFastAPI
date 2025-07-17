@@ -6,10 +6,11 @@
 #
 fastapi==0.101.0
     # via -r requirements.in
-paddleocr==2.10.0
+paddleocr==3.1.0
     # via -r requirements.in
 
-paddlepaddle-gpu==2.6.2
+--extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cu129/
+paddlepaddle-gpu==3.1.0
     # via -r requirements.in
 python-multipart==0.0.6
     # via -r requirements.in
@@ -17,8 +18,9 @@ uvicorn==0.23.2
     # via -r requirements.in
 requests==2.31.0
     # via -r requirements.in
-numpy==1.24.4
+# numpy==1.24.4
     # via -r requirements.in
     
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
+setuptools
