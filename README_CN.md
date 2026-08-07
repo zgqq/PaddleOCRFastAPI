@@ -1,112 +1,94 @@
 # PaddleOCRFastAPI
 
-一个可 Docker (Compose) 部署的, 基于 `FastAPI` 的简易版 Paddle OCR Web API.
+基于 FastAPI 的轻量 OCR HTTP 服务。本分支面向 **Apple Silicon macOS / CPU**，使用：
 
-## 版本选择
+- PaddlePaddle 3.3.0
+- PaddleOCR 3.7.0
+- PP-OCRv6 small（检测与识别）
 
-| PaddleOCR | Branch |
-| :--: | :--: |
-| v2.5 | [paddleocr-v2.5](https://github.com/cgcel/PaddleOCRFastAPI/tree/paddleocr-v2.5) |
-| v2.7 | [paddleocr-v2.7](https://github.com/cgcel/PaddleOCRFastAPI/tree/paddleocr-v2.7) |
+## 兼容接口
 
-## 接口功能
+保留旧服务的四个接口和外层 JSON 契约：
 
-- [x] 局域网范围内路径图片 OCR 识别
-- [x] Base64 数据识别
-- [x] 上传文件识别
+- `GET /ocr/predict-by-path`
+- `POST /ocr/predict-by-base64`
+- `POST /ocr/predict-by-file`
+- `GET /ocr/predict-by-url`
 
-## 部署方式
+返回结构：
 
-### 直接部署
+```json
+{
+  "resultcode": 200,
+  "message": "Success",
+  "data": [
+    [
+      [
+        [[33.0, 67.0], [240.0, 68.0], [239.0, 91.0], [32.0, 90.0]],
+        ["识别文本", 0.98]
+      ]
+    ]
+  ]
+}
+```
 
-1. 复制项目至部署路径
+`ocr_det=false`时保留旧识别-only结构：
 
-   ```shell
-   git clone https://github.com/cgcel/PaddleOCRFastAPI.git
-   ```
+```json
+{
+  "data": [[[
+    "识别文本",
+    0.98
+  ]]]
+}
+```
 
-   > *master 分支为项目中支持的 PaddleOCR 的最新版本, 如需安装特定版本, 请克隆对应版本号的分支.*
+## 兼容边界
 
-2. (可选) 新建虚拟环境, 避免依赖冲突
-3. 安装所需依赖
+- HTTP路径、请求参数、外层字段、文字框/文本/置信度结构兼容旧版。
+- PP-OCRv4升级为PP-OCRv6后，检测框、文本、置信度和行顺序可能变化，不保证响应逐字节一致。
+- `predict-by-path`读取的是**服务所在Mac的本地路径**。旧WSL路径不会自动映射到Mac。
+- PP-OCRv6 small是统一多语言模型，不再使用旧版`OCR_LANGUAGE`切换模型。
+- 本分支的macOS直接运行方式已验证；Docker尚未验证。
 
-   ```shell
-   pip3 install -r requirements.txt
-   ```
+## 安装
 
-4. 运行 FastAPI
+建议使用独立Python虚拟环境：
 
-   ```shell
-   uvicorn main:app --host 0.0.0.0
-   ```
+```shell
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+```
 
-### Docker 部署
+已在Apple M4、macOS arm64、Python 3.9环境验证依赖安装和真实推理。
 
-在 `Centos 7`, `Ubuntu 20.04`, `Ubuntu 22.04`, `Windows 10`, `Windows 11` 中测试成功, 需要先安装好 `Docker`.
+## 运行
 
-1. 复制项目至部署路径
+```shell
+.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+```
 
-   ```shell
-   git clone https://github.com/cgcel/PaddleOCRFastAPI.git
-   ```
+首次OCR请求会下载并加载PP-OCRv6 small模型，后续请求复用同一模型实例。
 
-   > *master 分支为项目中支持的 PaddleOCR 的最新版本, 如需安装特定版本, 请克隆对应版本号的分支.*
+Swagger：<http://localhost:8000/docs>
 
-2. 制作 Docker 镜像
+## 测试
 
-   ```shell
-   docker build -t paddleocrfastapi:latest .
-   ```
+测试不需要下载Paddle模型：
 
-3. 编辑 `docker-compose.yml`
+```shell
+python -m pytest tests -q
+```
 
-   ```yaml
-   version: "3"
+测试覆盖：
 
-   services:
-
-     paddleocrfastapi:
-       container_name: paddleocrfastapi # 自定义容器名
-       image: paddleocrfastapi:latest # 第2步自定义的镜像名与标签
-       environment:
-         - TZ=Asia/Hong_Kong
-       ports:
-        - 8000:8000 # 自定义服务暴露端口, 8000 为 FastAPI 默认端口, 不做修改
-       restart: unless-stopped
-   ```
-
-4. 生成 Docker 容器并运行
-
-   ```shell
-   docker-compose up -d
-   ```
-
-5. Swagger 页面请访问 localhost:\<port\>/docs
-
-## Change language
-
-1. 将此仓库克隆至本地.
-2. 编辑 `routers/ocr.py`, 修改参数 "lang":
-
-   ```python
-   ocr = PaddleOCR(use_angle_cls=True, lang="ch")
-   ```
-
-   编辑前, 先阅读 [supported language list](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/doc/doc_en/multi_languages_en.md#5-support-languages-and-abbreviations).
-
-3. 重新创建 docker 镜像, 或直接运行 `main.py`.
-
-## 运行截图
-API 文档：`/docs`
-
-![Swagger](https://raw.githubusercontent.com/cgcel/PaddleOCRFastAPI/dev/screenshots/Swagger.png)
-
-## Todo
-
-- [ ] support ppocr v4
-- [ ] GPU mode
-- [x] Image url recognition
+- 四个HTTP接口的旧响应契约；
+- PaddleOCR 3.x Result到旧数据结构的转换；
+- `ocr_det=false`结构；
+- PP-OCRv6 small CPU模型选择和懒加载；
+- `ocr_cls`到文字行方向分类参数的映射。
 
 ## License
 
-**PaddleOCRFastAPI** is licensed under the MIT license. Refer to [LICENSE](https://github.com/cgcel/PaddleOCRFastAPI/blob/master/LICENSE) for more information.
+MIT。详见 [LICENSE](LICENSE)。
