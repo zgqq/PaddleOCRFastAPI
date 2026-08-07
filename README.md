@@ -1,117 +1,44 @@
-# PaddleOCRFastAPI
+# RapidOCR MPS FastAPI
 
-![GitHub](https://img.shields.io/github/license/cgcel/PaddleOCRFastAPI)
+[中文说明](README_CN.md)
 
-[中文](https://github.com/cgcel/PaddleOCRFastAPI/blob/master/README_CN.md)
+This branch runs **RapidOCR 3.9.2 with PyTorch 2.8.0 MPS** on Apple Silicon macOS while preserving the legacy PaddleOCRFastAPI HTTP contract.
 
-A simple way to deploy `PaddleOCR` based on `FastAPI`.
+## Requirements
 
-## Support Version
+- Apple Silicon macOS
+- Python 3.12
+- PyTorch MPS available
 
-| PaddleOCR | Branch |
-| :--: | :--: |
-| v2.5 | [paddleocr-v2.5](https://github.com/cgcel/PaddleOCRFastAPI/tree/paddleocr-v2.5) |
-| v2.7 | [paddleocr-v2.7](https://github.com/cgcel/PaddleOCRFastAPI/tree/paddleocr-v2.7) |
+CPU fallback is intentionally disabled. `/ready` returns HTTP 503 when MPS or model loading is unavailable.
 
-## Features
+```bash
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 18330 --workers 1
+```
 
-- [x] Local path image recognition
-- [x] Base64 data recognition
-- [x] Upload file recognition
+Health surfaces:
 
-## Deployment Methods
+```bash
+curl -fsS http://127.0.0.1:18330/health
+curl -fsS http://127.0.0.1:18330/ready
+```
 
-### Deploy Directly
+Legacy OCR endpoints:
 
-1. Copy the project to the deployment path
+- `GET /ocr/predict-by-path`
+- `POST /ocr/predict-by-base64`
+- `POST /ocr/predict-by-file`
+- `GET /ocr/predict-by-url`
 
-   ```shell
-   git clone https://github.com/cgcel/PaddleOCRFastAPI.git
-   ```
+The engine is a lazy singleton and inference is serialized at process concurrency 1. Do not add Uvicorn workers without new memory and correctness acceptance evidence.
 
-   > *The master branch is the most recent version of PaddleOCR supported by the project. To install a specific version, clone the branch with the corresponding version number.*
+```bash
+python -m pytest tests -q
+python -m compileall -q backends models routers utils main.py
+```
 
-2. (Optional) Create new virtual environment to avoid dependency conflicts
-3. Install required dependencies
+Production launchd deployment and recovery scripts are maintained by `oh-my-server/macos/ocr-services/`. Clients use `http://ocr.prod.ai-infra.home.arpa`; direct host addresses are deployment and diagnostic surfaces only.
 
-   ```shell
-   pip3 install -r requirements.txt
-   ```
-
-4. Run FastAPI
-
-   ```shell
-   uvicorn main:app --host 0.0.0.0
-   ```
-
-### Docker Deployment
-
-Test completed in `Centos 7`, `Ubuntu 20.04`, `Ubuntu 22.04`, `Windows 10`, `Windows 11`, requires `Docker` to be installed.
-
-1. Copy the project to the deployment path
-
-   ```shell
-   git clone https://github.com/cgcel/PaddleOCRFastAPI.git
-   ```
-
-   > *The master branch is the most recent version of PaddleOCR supported by the project. To install a specific version, clone the branch with the corresponding version number.*
-
-2. Building a Docker Image
-
-   ```shell
-   docker build -t paddleocrfastapi:latest .
-   ```
-
-3. Edit `docker-compose.yml`
-
-   ```yaml
-   version: "3"
-
-   services:
-
-     paddleocrfastapi:
-       container_name: paddleocrfastapi # Custom Container Name
-       image: paddleocrfastapi:lastest # Customized Image Name & Label in Step 2
-       environment:
-         - TZ=Asia/Hong_Kong
-         - OCR_LANGUAGE=ch # support 80 languages. refer to https://github.com/Mushroomcat9998/PaddleOCR/blob/main/doc/doc_en/multi_languages_en.md#language_abbreviations
-       ports:
-        - 8000:8000 # Customize the service exposure port, 8000 is the default FastAPI port, do not modify
-       restart: unless-stopped
-   ```
-
-4. Create the Docker container and run
-
-   ```shell
-   docker compose up -d
-   ```
-
-5. Swagger Page at `localhost:<port>/docs`
-
-## Change language
-
-1. Clone this repo to localhost.
-2. Edit `routers/ocr.py`, modify the parameter "lang":
-
-   ```python
-   ocr = PaddleOCR(use_angle_cls=True, lang="ch")
-   ```
-
-   Before modify, read the [supported language list](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/doc/doc_en/multi_languages_en.md#5-support-languages-and-abbreviations).
-
-3. Rebuild the docker image, or run the `main.py` directly.
-
-## Screenshots
-API Docs: `/docs`
-
-![Swagger](https://raw.githubusercontent.com/cgcel/PaddleOCRFastAPI/dev/screenshots/Swagger.png)
-
-## Todo
-
-- [x] support ppocr v4
-- [ ] GPU mode
-- [x] Image url recognition
-
-## License
-
-**PaddleOCRFastAPI** is licensed under the MIT license. Refer to [LICENSE](https://github.com/cgcel/PaddleOCRFastAPI/blob/master/LICENSE) for more information.
+See [README_CN.md](README_CN.md) for compatibility limits, benchmark evidence, deployment gates, and rollback behavior.

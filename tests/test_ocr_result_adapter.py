@@ -6,6 +6,13 @@ class PaddleResult:
         self.json = {"res": result}
 
 
+class RapidResult:
+    def __init__(self, *, boxes, txts, scores):
+        self.boxes = boxes
+        self.txts = txts
+        self.scores = scores
+
+
 def test_ppocr_v6_result_converts_to_legacy_page_shape():
     raw_results = [
         {
@@ -63,3 +70,27 @@ def test_empty_detection_preserves_legacy_null_page():
     ]
 
     assert to_legacy_result(raw_results) == [None]
+
+
+def test_rapidocr_detection_result_converts_to_legacy_page_shape():
+    result = RapidResult(
+        boxes=[[[1, 2], [3, 2], [3, 4], [1, 4]]],
+        txts=("兼容",),
+        scores=(0.9,),
+    )
+
+    assert to_legacy_result(result) == [
+        [[[[1.0, 2.0], [3.0, 2.0], [3.0, 4.0], [1.0, 4.0]], ["兼容", 0.9]]]
+    ]
+
+
+def test_rapidocr_recognition_only_preserves_legacy_det_false_shape():
+    result = RapidResult(boxes=None, txts=("兼容",), scores=(0.9,))
+
+    assert to_legacy_result(result) == [[["兼容", 0.9]]]
+
+
+def test_rapidocr_empty_detection_preserves_legacy_null_page():
+    result = RapidResult(boxes=[], txts=(), scores=())
+
+    assert to_legacy_result(result) == [None]

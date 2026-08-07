@@ -1,0 +1,43 @@
+schema_version: "2.0"
+
+project:
+  name: paddleocr-fastapi
+  app_id: rapidocr-mps
+  kind: service
+  lifecycle_status: active
+
+deployment:
+  default_target: baremetal
+  supported_targets:
+    - baremetal
+
+modules:
+  app:
+    type: service
+    app_id: rapidocr-mps
+    path: .
+    runtime: python
+    language: python
+    package_manager: pip
+    database:
+      kind: none
+      reason: Stateless OCR inference service.
+    endpoints:
+      health: /health
+      ready: /ready
+      openapi: /openapi.json
+
+verify:
+  - name: health
+    module: app
+    path: /health
+  - name: ready
+    module: app
+    path: /ready
+  - name: openapi
+    module: app
+    path: /openapi.json
+
+operations:
+  test: python -m pytest tests -q
+  compile: python -m compileall -q backends models routers utils main.py

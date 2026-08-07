@@ -13,9 +13,9 @@ router = APIRouter(prefix="/ocr", tags=["OCR"])
 
 @lru_cache
 def get_ocr_backend():
-    from backends.PaddleOCRBackend import PaddleOCRBackend
+    from backends.RapidOCRBackend import RapidOCRBackend
 
-    return PaddleOCRBackend()
+    return RapidOCRBackend()
 
 
 @router.get('/predict-by-path', response_model=RestfulModel, summary="识别本地图片")

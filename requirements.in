@@ -1,6 +1,7 @@
+# Direct runtime dependencies. Verified target: Apple M4 / macOS / Python 3.12.
 fastapi==0.128.8
-paddlepaddle==3.3.0
-paddleocr==3.7.0
+rapidocr==3.9.2
+torch==2.8.0
 uvicorn==0.39.0
 python-multipart==0.0.20
 requests==2.32.5
