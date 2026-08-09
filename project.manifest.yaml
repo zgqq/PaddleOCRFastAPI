@@ -1,0 +1,30 @@
+schema_version: "2.0"
+
+project:
+  name: PaddleOCRFastAPI
+  app_id: paddleocr-fastapi
+  kind: experiment
+  lifecycle_status: development
+  description: Local Apple Silicon CPU OCR compatibility service based on FastAPI and PP-OCRv6.
+
+modules:
+  api:
+    type: service
+    app_id: paddleocr-fastapi
+    path: .
+    runtime: python
+    language: python
+    start: uvicorn main:app --host 0.0.0.0 --port 8000
+    database:
+      kind: none
+      reason: OCR inference is stateless and owns no runtime database.
+    endpoints:
+      docs: /docs
+
+verify:
+  - name: unit_tests
+    command: python -m pytest tests -q
+
+operations:
+  test: python -m pytest tests -q
+  start: uvicorn main:app --host 0.0.0.0 --port 8000

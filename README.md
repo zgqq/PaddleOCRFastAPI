@@ -1,117 +1,32 @@
 # PaddleOCRFastAPI
 
-![GitHub](https://img.shields.io/github/license/cgcel/PaddleOCRFastAPI)
+FastAPI OCR service for the `macos-ppocr-v6` branch. This branch targets Apple Silicon macOS / CPU and uses PaddlePaddle 3.3.0, PaddleOCR 3.7.0, and PP-OCRv6 small.
 
-[中文](https://github.com/cgcel/PaddleOCRFastAPI/blob/master/README_CN.md)
+For the current API contract, installation steps, compatibility limits, and tests, see [README_CN.md](README_CN.md).
 
-A simple way to deploy `PaddleOCR` based on `FastAPI`.
+## Quick start
 
-## Support Version
+```shell
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+```
 
-| PaddleOCR | Branch |
-| :--: | :--: |
-| v2.5 | [paddleocr-v2.5](https://github.com/cgcel/PaddleOCRFastAPI/tree/paddleocr-v2.5) |
-| v2.7 | [paddleocr-v2.7](https://github.com/cgcel/PaddleOCRFastAPI/tree/paddleocr-v2.7) |
+Swagger UI: <http://localhost:8000/docs>
 
-## Features
+## Compatibility notes
 
-- [x] Local path image recognition
-- [x] Base64 data recognition
-- [x] Upload file recognition
+- The four legacy `/ocr/predict-*` endpoints and outer JSON shape are preserved.
+- PP-OCRv6 uses a unified multilingual model; the legacy `OCR_LANGUAGE` switch is not supported by this branch.
+- Direct macOS execution has been verified. Docker remains an unverified compatibility path.
 
-## Deployment Methods
+## Tests
 
-### Deploy Directly
-
-1. Copy the project to the deployment path
-
-   ```shell
-   git clone https://github.com/cgcel/PaddleOCRFastAPI.git
-   ```
-
-   > *The master branch is the most recent version of PaddleOCR supported by the project. To install a specific version, clone the branch with the corresponding version number.*
-
-2. (Optional) Create new virtual environment to avoid dependency conflicts
-3. Install required dependencies
-
-   ```shell
-   pip3 install -r requirements.txt
-   ```
-
-4. Run FastAPI
-
-   ```shell
-   uvicorn main:app --host 0.0.0.0
-   ```
-
-### Docker Deployment
-
-Test completed in `Centos 7`, `Ubuntu 20.04`, `Ubuntu 22.04`, `Windows 10`, `Windows 11`, requires `Docker` to be installed.
-
-1. Copy the project to the deployment path
-
-   ```shell
-   git clone https://github.com/cgcel/PaddleOCRFastAPI.git
-   ```
-
-   > *The master branch is the most recent version of PaddleOCR supported by the project. To install a specific version, clone the branch with the corresponding version number.*
-
-2. Building a Docker Image
-
-   ```shell
-   docker build -t paddleocrfastapi:latest .
-   ```
-
-3. Edit `docker-compose.yml`
-
-   ```yaml
-   version: "3"
-
-   services:
-
-     paddleocrfastapi:
-       container_name: paddleocrfastapi # Custom Container Name
-       image: paddleocrfastapi:lastest # Customized Image Name & Label in Step 2
-       environment:
-         - TZ=Asia/Hong_Kong
-         - OCR_LANGUAGE=ch # support 80 languages. refer to https://github.com/Mushroomcat9998/PaddleOCR/blob/main/doc/doc_en/multi_languages_en.md#language_abbreviations
-       ports:
-        - 8000:8000 # Customize the service exposure port, 8000 is the default FastAPI port, do not modify
-       restart: unless-stopped
-   ```
-
-4. Create the Docker container and run
-
-   ```shell
-   docker compose up -d
-   ```
-
-5. Swagger Page at `localhost:<port>/docs`
-
-## Change language
-
-1. Clone this repo to localhost.
-2. Edit `routers/ocr.py`, modify the parameter "lang":
-
-   ```python
-   ocr = PaddleOCR(use_angle_cls=True, lang="ch")
-   ```
-
-   Before modify, read the [supported language list](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.7/doc/doc_en/multi_languages_en.md#5-support-languages-and-abbreviations).
-
-3. Rebuild the docker image, or run the `main.py` directly.
-
-## Screenshots
-API Docs: `/docs`
-
-![Swagger](https://raw.githubusercontent.com/cgcel/PaddleOCRFastAPI/dev/screenshots/Swagger.png)
-
-## Todo
-
-- [x] support ppocr v4
-- [ ] GPU mode
-- [x] Image url recognition
+```shell
+python -m pytest tests -q
+```
 
 ## License
 
-**PaddleOCRFastAPI** is licensed under the MIT license. Refer to [LICENSE](https://github.com/cgcel/PaddleOCRFastAPI/blob/master/LICENSE) for more information.
+MIT. See [LICENSE](LICENSE).
