@@ -7,7 +7,28 @@ def _result_data(result):
     return result.json["res"]
 
 
+def _rapid_result_to_legacy(result):
+    texts = result.txts
+    if texts is None or len(texts) == 0:
+        return None
+    scores = result.scores
+    if scores is None or len(texts) != len(scores):
+        raise ValueError("RapidOCR text/score count mismatch")
+    if not hasattr(result, "boxes") or result.boxes is None:
+        return [[text, float(score)] for text, score in zip(texts, scores)]
+    if len(result.boxes) != len(texts):
+        raise ValueError("RapidOCR box/text count mismatch")
+    lines = []
+    for polygon, text, score in zip(result.boxes, texts, scores):
+        coordinates = [[float(x), float(y)] for x, y in polygon]
+        lines.append([coordinates, [text, float(score)]])
+    return lines
+
+
 def to_legacy_result(raw_results):
+    if hasattr(raw_results, "txts") and hasattr(raw_results, "scores"):
+        return [_rapid_result_to_legacy(raw_results)]
+
     pages = []
     for result in raw_results:
         result = _result_data(result)

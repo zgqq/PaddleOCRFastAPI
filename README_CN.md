@@ -1,6 +1,6 @@
 # PaddleOCRFastAPI
 
-基于 FastAPI 的轻量 OCR HTTP 服务。本分支面向 **Apple Silicon macOS / CPU**，使用：
+基于 FastAPI 的轻量 OCR HTTP 服务。默认仍为 **Apple Silicon macOS / CPU** 的 PaddleOCR PP-OCRv6 small。可显式选择 RapidOCR 3.9.2 + PyTorch 2.8.0 的 MPS 后端；本项目仍是**不可部署的开发实验**，不代表生产发布：
 
 - PaddlePaddle 3.3.0
 - PaddleOCR 3.7.0
@@ -47,9 +47,12 @@
 
 - HTTP路径、请求参数、外层字段、文字框/文本/置信度结构兼容旧版。
 - PP-OCRv4升级为PP-OCRv6后，检测框、文本、置信度和行顺序可能变化，不保证响应逐字节一致。
+- 本实现仅切换后端，不改变HTTP路径及外层响应结构；MPS后端的识别结果、分数、行序可能不同。
+- `OCR_BACKEND` 默认 `paddle`；只有显式设置 `rapidocr-mps` 才会引入 RapidOCR/PyTorch，未知值直接报错。不同依赖请使用隔离虚拟环境，不要将两套依赖混装进生产运行时。
+- `/health` 只反映进程存活；`/ready` 加载所选后端。MPS后端校验det/cls/rec三个模型实际运行设备均为mps，MPS不可用或模型退回CPU时返回503，不会自动回退。
 - `predict-by-path`读取的是**服务所在Mac的本地路径**。旧WSL路径不会自动映射到Mac。
 - PP-OCRv6 small是统一多语言模型，不再使用旧版`OCR_LANGUAGE`切换模型。
-- 本分支的macOS直接运行方式已验证；Docker尚未验证。
+- 默认CPU模式已在Mac直接运行验证；本候选的MPS隔离运行结果见下文。Docker和全新安装MPS依赖尚未验证。
 
 ## 安装
 
@@ -70,6 +73,12 @@ python3 -m venv .venv
 ```
 
 首次OCR请求会下载并加载PP-OCRv6 small模型，后续请求复用同一模型实例。
+
+可选MPS模式：仅在Apple Silicon macOS/Python 3.12的**独立**虚拟环境安装`requirements-mps.txt`，显式设置`OCR_BACKEND=rapidocr-mps`后运行同一个`uvicorn main:app`。不设置时仍运行默认CPU模式。MPS模型的首次下载/新安装不是本轮验收范围；请先确认网络、空间及模型来源。启动后可请求`/ready`判断实际模型设备。未知后端值不会自动降级。
+
+在已有MPS运行依赖的目标机上，可在隔离候选副本中执行`OCR_BACKEND=rapidocr-mps python -m scripts.accept_mps`：只在127.0.0.1的临时端口启动候选服务，针对`screenshots/Swagger.png`测试检测/识别、识别-only和坏图片400，并关闭临时服务；**不要以生产实例的/ready结果代替候选验收**。
+
+本轮候选在目标Mac mini的隔离副本中使用既有虚拟环境完成真实HTTP推理：macOS arm64、RapidOCR 3.9.2/PyTorch 2.8.0，det/cls/rec实际设备均为mps；固定fixture SHA256 `9fef56ac8b7fc34931a1e0315e5639687e8286f0799ced758479a282d52145cf`，检测14行（包含`Paddle OCR API`），热推理约1014ms；第一行裁剪识别-only返回`Paddle OCR API`、约104ms；坏Base64图片HTTP 400、约1ms；`/ready`首次模型加载约917ms。延迟只是单次观测，不是性能保证。未安装组件、未切流、未重启生产服务；未验证全新安装依赖或Docker。
 
 Swagger：<http://localhost:8000/docs>
 

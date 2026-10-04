@@ -5,12 +5,15 @@ project:
   app_id: paddleocr-fastapi
   kind: experiment
   lifecycle_status: development
-  description: Local Apple Silicon CPU OCR compatibility service based on FastAPI and PP-OCRv6.
+  description: Local Apple Silicon CPU OCR compatibility service based on FastAPI and PP-OCRv6, with an opt-in RapidOCR MPS experiment.
 
 operations:
   test: python3 -m pytest tests -q
+  compile: python3 -m compileall -q backends models routers utils main.py scripts
   start: uvicorn main:app --host 0.0.0.0 --port 8000
 
 verify:
   - name: unit_tests
     command: python3 -m pytest tests -q
+  - name: compile
+    command: python3 -m compileall -q backends models routers utils main.py scripts

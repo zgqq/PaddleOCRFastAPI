@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from backends.RapidOCRBackend import MPSUnavailableError
 from routers import ocr
 
 
@@ -20,6 +22,27 @@ def create_app(ocr_backend=None):
 
     if ocr_backend is not None:
         app.dependency_overrides[ocr.get_ocr_backend] = lambda: ocr_backend
+
+    @app.exception_handler(MPSUnavailableError)
+    async def mps_unavailable(request: Request, exc: MPSUnavailableError):
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+    @app.get("/health", tags=["Health"])
+    def health():
+        return {"status": "ok"}
+
+    @app.get("/ready", tags=["Health"])
+    def ready(backend=Depends(ocr.get_ocr_backend)):
+        try:
+            return backend.ensure_ready()
+        except MPSUnavailableError:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OCR backend initialization failed",
+            ) from exc
+
     app.include_router(ocr.router)
     return app
 

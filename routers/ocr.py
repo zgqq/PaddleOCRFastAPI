@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import lru_cache
+import os
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from models.OCRModel import Base64PostModel
@@ -18,6 +19,13 @@ ALLOWED_FILE_EXTENSIONS_LABEL = ".jpg/.jpeg 或 .png"
 
 @lru_cache
 def get_ocr_backend():
+    backend = os.environ.get("OCR_BACKEND", "paddle")
+    if backend == "rapidocr-mps":
+        from backends.RapidOCRBackend import RapidOCRBackend
+
+        return RapidOCRBackend()
+    if backend != "paddle":
+        raise ValueError(f"Unsupported OCR_BACKEND: {backend!r}")
     from backends.PaddleOCRBackend import PaddleOCRBackend
 
     return PaddleOCRBackend()

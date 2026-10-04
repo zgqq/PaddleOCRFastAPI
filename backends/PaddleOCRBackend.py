@@ -31,6 +31,10 @@ class PaddleOCRBackend:
             )
         return self._recognizer
 
+    def ensure_ready(self):
+        self._get_ocr()
+        return {"status": "ready", "backend": "paddle", "device": "cpu"}
+
     def predict(self, image, *, detect=True, classify=True):
         if not detect:
             return self._get_recognizer().predict(image)

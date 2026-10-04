@@ -1,3 +1,7 @@
+from types import SimpleNamespace
+
+import pytest
+
 from utils.OCRResultAdapter import to_legacy_result
 
 
@@ -63,3 +67,17 @@ def test_empty_detection_preserves_legacy_null_page():
     ]
 
     assert to_legacy_result(raw_results) == [None]
+
+
+def test_rapidocr_recognition_only_and_empty_page():
+    assert to_legacy_result(SimpleNamespace(txts=("兼容",), scores=(0.9,))) == [
+        [["兼容", 0.9]]
+    ]
+    assert to_legacy_result(SimpleNamespace(boxes=None, txts=None, scores=None)) == [None]
+
+
+def test_rapidocr_rejects_truncated_results():
+    with pytest.raises(ValueError, match="count mismatch"):
+        to_legacy_result(SimpleNamespace(boxes=None, txts=("a", "b"), scores=(0.9,)))
+    with pytest.raises(ValueError, match="count mismatch"):
+        to_legacy_result(SimpleNamespace(boxes=[], txts=("a",), scores=(0.9,)))

@@ -37,6 +37,8 @@ def test_backend_lazily_loads_ppocr_v6_cpu_and_maps_orientation(monkeypatch):
         }
     ]
     assert calls == [("image", {"use_textline_orientation": False})]
+    assert backend.ensure_ready() == {"status": "ready", "backend": "paddle", "device": "cpu"}
+    assert len(created) == 1
 
 
 def test_backend_uses_text_recognition_when_detection_is_disabled(monkeypatch):
