@@ -52,7 +52,7 @@
 - `/health` 只反映进程存活；`/ready` 加载所选后端。MPS后端校验det/cls/rec三个模型实际运行设备均为mps，MPS不可用或模型退回CPU时返回503，不会自动回退。
 - `predict-by-path`读取的是**服务所在Mac的本地路径**。旧WSL路径不会自动映射到Mac。
 - PP-OCRv6 small是统一多语言模型，不再使用旧版`OCR_LANGUAGE`切换模型。
-- 默认CPU模式已在Mac直接运行验证；本候选的MPS隔离运行结果见下文。Docker和全新安装MPS依赖尚未验证。
+- 默认CPU模式此前已在Mac直接运行验证；本候选额外验证了Mac上的全新MPS虚拟环境安装及本地Docker的CPU边界。详情见[readiness证据](docs/mps-readiness-evidence.md)。Docker不提供Apple Metal/MPS。
 
 ## 安装
 
@@ -74,11 +74,11 @@ python3 -m venv .venv
 
 首次OCR请求会下载并加载PP-OCRv6 small模型，后续请求复用同一模型实例。
 
-可选MPS模式：仅在Apple Silicon macOS/Python 3.12的**独立**虚拟环境安装`requirements-mps.txt`，显式设置`OCR_BACKEND=rapidocr-mps`后运行同一个`uvicorn main:app`。不设置时仍运行默认CPU模式。MPS模型的首次下载/新安装不是本轮验收范围；请先确认网络、空间及模型来源。启动后可请求`/ready`判断实际模型设备。未知后端值不会自动降级。
+可选MPS模式：仅在Apple Silicon macOS/Python 3.12的**独立**虚拟环境安装`requirements-mps.txt`，显式设置`OCR_BACKEND=rapidocr-mps`后运行同一个`uvicorn main:app`。不设置时仍运行默认CPU模式。全新安装已在隔离scratch验收，模型从ModelScope下载到该虚拟环境内。启动后可请求`/ready`判断模型设备。未知后端值不会自动降级。为确保PyTorch内核也不会静默退回CPU，运行时设置`PYTORCH_ENABLE_MPS_FALLBACK=0`；应用检测到`=1`会拒绝就绪/推理。模型设备校验和关闭该开关不等于逐个内核的性能归因。
 
-在已有MPS运行依赖的目标机上，可在隔离候选副本中执行`OCR_BACKEND=rapidocr-mps python -m scripts.accept_mps`：只在127.0.0.1的临时端口启动候选服务，针对`screenshots/Swagger.png`测试检测/识别、识别-only和坏图片400，并关闭临时服务；**不要以生产实例的/ready结果代替候选验收**。
+在目标Mac mini的隔离候选副本与独立虚拟环境中执行`PYTORCH_ENABLE_MPS_FALLBACK=0 OCR_BACKEND=rapidocr-mps .venv/bin/python -m scripts.accept_mps`：仅在127.0.0.1临时端口启动，固定`screenshots/Swagger.png`（SHA256见证据）测试检测/识别、真实裁剪识别-only、混合并发和坏图片400，并关闭临时服务；重复执行验证进程重启。**不要以生产实例的/ready结果代替候选验收**。
 
-本轮候选在目标Mac mini的隔离副本中使用既有虚拟环境完成真实HTTP推理：macOS arm64、RapidOCR 3.9.2/PyTorch 2.8.0，det/cls/rec实际设备均为mps；固定fixture SHA256 `9fef56ac8b7fc34931a1e0315e5639687e8286f0799ced758479a282d52145cf`，检测14行（包含`Paddle OCR API`），热推理约1014ms；第一行裁剪识别-only返回`Paddle OCR API`、约104ms；坏Base64图片HTTP 400、约1ms；`/ready`首次模型加载约917ms。延迟只是单次观测，不是性能保证。未安装组件、未切流、未重启生产服务；未验证全新安装依赖或Docker。
+历史候选（见[MPS rebuild evidence](docs/mps-rebuild-evidence.md)）在目标Mac mini的隔离副本中复用既有虚拟环境完成真实HTTP推理：macOS arm64、RapidOCR 3.9.2/PyTorch 2.8.0，det/cls/rec实际设备均为mps；固定fixture SHA256 `9fef56ac8b7fc34931a1e0315e5639687e8286f0799ced758479a282d52145cf`，检测14行（包含`Paddle OCR API`），热推理约1014ms；第一行裁剪识别-only返回`Paddle OCR API`、约104ms；坏Base64图片HTTP 400、约1ms。该历史测试未验证新安装或Docker；本轮全新安装、Docker及清理证据单独见[readiness证据](docs/mps-readiness-evidence.md)。延迟只是单次观测，不是性能保证。
 
 Swagger：<http://localhost:8000/docs>
 

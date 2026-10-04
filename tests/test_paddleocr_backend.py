@@ -34,6 +34,7 @@ def test_backend_lazily_loads_ppocr_v6_cpu_and_maps_orientation(monkeypatch):
             "use_textline_orientation": True,
             "text_rec_score_thresh": 0.5,
             "device": "cpu",
+            **({"enable_mkldnn": False} if sys.platform == "linux" else {}),
         }
     ]
     assert calls == [("image", {"use_textline_orientation": False})]
@@ -61,5 +62,6 @@ def test_backend_uses_text_recognition_when_detection_is_disabled(monkeypatch):
     backend = PaddleOCRBackend()
 
     assert backend.predict("image", detect=False, classify=True) == ["recognized"]
-    assert created == [{"model_name": "PP-OCRv6_small_rec", "device": "cpu"}]
+    assert created == [{"model_name": "PP-OCRv6_small_rec", "device": "cpu",
+                        **({"enable_mkldnn": False} if sys.platform == "linux" else {})}]
     assert calls == ["image"]

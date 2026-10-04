@@ -76,6 +76,20 @@ def test_unavailable_mps_returns_503_on_ready_and_inference():
     assert response.status_code == 503
 
 
+def test_enabled_torch_kernel_cpu_fallback_is_rejected(monkeypatch):
+    backend = RapidOCRBackend(engine_factory=FakeEngine, mps_available=lambda: True)
+    client = TestClient(create_app(backend))
+    monkeypatch.setenv("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+    response = client.get("/ready")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "PyTorch MPS CPU kernel fallback must be disabled"}
+    monkeypatch.setenv("PYTORCH_ENABLE_MPS_FALLBACK", "0")
+    assert client.get("/ready").status_code == 200
+    monkeypatch.setenv("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+    response = client.get("/ocr/predict-by-path", params={"image_path": "fixture"})
+    assert response.status_code == 503
+
+
 def test_engine_init_failure_and_lost_mps_fail_closed():
     def fail_factory():
         raise RuntimeError("internal model path should not be exposed")

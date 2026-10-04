@@ -20,9 +20,10 @@ Swagger UI: <http://localhost:8000/docs>
 - The four legacy `/ocr/predict-*` endpoints and outer JSON shape are preserved.
 - The default PaddleOCR/CPU install is unchanged. For the optional macOS arm64/Python 3.12 backend, install `requirements-mps.txt` in a separate virtualenv, set `OCR_BACKEND=rapidocr-mps`, and run `uvicorn main:app`.
 - `/health` is a liveness check; `/ready` loads the selected backend and reports its actual device. RapidOCR verifies all three Torch model sessions are on MPS and fails with 503 instead of falling back to CPU.
-- Run `python -m scripts.accept_mps` from the repository root for an isolated loopback HTTP smoke on Apple Silicon with the existing `screenshots/Swagger.png` fixture (no production listener).
+- Run `PYTORCH_ENABLE_MPS_FALLBACK=0 OCR_BACKEND=rapidocr-mps python -m scripts.accept_mps` from the repository root for an isolated loopback HTTP smoke on Apple Silicon with the fixed `screenshots/Swagger.png` fixture; it also checks mixed concurrent requests (no production listener).
+- The MPS backend rejects `PYTORCH_ENABLE_MPS_FALLBACK=1` before model loading/inference; default PyTorch kernel fallback remains disabled. `/ready` checks det/cls/rec model parameter devices, not every intermediate operation.
 - PP-OCRv6 uses a unified multilingual model; the legacy `OCR_LANGUAGE` switch is not supported.
-- Docker and a fresh RapidOCR/MPS dependency install have not been verified.
+- The local Docker image is Linux PaddleOCR/CPU only. A Docker MPS request returns 503; Docker does not provide Apple Metal/MPS. See [readiness evidence](docs/mps-readiness-evidence.md) for fresh native install and Docker acceptance; this does not change the non-deployable experiment lifecycle.
 
 ## Tests
 

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import sys
+
 
 class PaddleOCRBackend:
     def __init__(self):
@@ -18,6 +20,10 @@ class PaddleOCRBackend:
                 use_textline_orientation=True,
                 text_rec_score_thresh=0.5,
                 device="cpu",
+                # Paddle 3.3 / PaddleX 3.7 on Linux x86 can fail at inference
+                # with an unsupported oneDNN PIR ArrayAttribute conversion.
+                # Leave the existing macOS CPU configuration unchanged.
+                **({"enable_mkldnn": False} if sys.platform == "linux" else {}),
             )
         return self._ocr
 
@@ -28,6 +34,10 @@ class PaddleOCRBackend:
             self._recognizer = TextRecognition(
                 model_name="PP-OCRv6_small_rec",
                 device="cpu",
+                # Paddle 3.3 / PaddleX 3.7 on Linux x86 can fail at inference
+                # with an unsupported oneDNN PIR ArrayAttribute conversion.
+                # Leave the existing macOS CPU configuration unchanged.
+                **({"enable_mkldnn": False} if sys.platform == "linux" else {}),
             )
         return self._recognizer
 

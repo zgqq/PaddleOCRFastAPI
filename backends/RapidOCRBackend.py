@@ -5,6 +5,7 @@ prove that all three model sessions actually loaded on MPS, not just that MPS is
 available or that use_mps was requested. Pin RapidOCR to 3.9.2 when using this.
 """
 
+import os
 import threading
 
 
@@ -14,14 +15,14 @@ class MPSUnavailableError(RuntimeError):
 
 def _mps_available():
     import platform
-    import torch
 
-    return (
-        platform.system() == "Darwin"
-        and platform.machine() == "arm64"
-        and torch.backends.mps.is_built()
-        and torch.backends.mps.is_available()
-    )
+    if platform.system() != "Darwin" or platform.machine() != "arm64":
+        return False
+    try:
+        import torch
+    except ImportError:
+        return False
+    return torch.backends.mps.is_built() and torch.backends.mps.is_available()
 
 
 def _make_engine():
@@ -60,6 +61,10 @@ class RapidOCRBackend:
         return devices
 
     def _load_engine(self):
+        # PyTorch accepts this switch at import time; reject it even when all
+        # model parameters report MPS, since unsupported kernels could use CPU.
+        if os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK") == "1":
+            raise MPSUnavailableError("PyTorch MPS CPU kernel fallback must be disabled")
         if not self._mps_available():
             raise MPSUnavailableError("PyTorch MPS is unavailable; CPU fallback is disabled")
         if self._engine is None:
