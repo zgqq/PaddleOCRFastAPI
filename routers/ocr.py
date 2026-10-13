@@ -16,6 +16,8 @@ router = APIRouter(prefix="/ocr", tags=["OCR"])
 # 最终以 bytes_to_ndarray 解码结果为准；解码失败返回 400，避免不可信扩展名/MIME 导致 500。
 ALLOWED_FILE_EXTENSIONS = (".jpg", ".jpeg", ".png")
 ALLOWED_FILE_EXTENSIONS_LABEL = ".jpg/.jpeg 或 .png"
+# Requests connect/read-inactivity budgets, not an end-to-end download deadline.
+URL_TIMEOUT_SECONDS = (5, 30)
 
 @lru_cache
 def get_ocr_backend():
@@ -78,7 +80,7 @@ def predict_by_base64(
 
 
 @router.post('/predict-by-file', response_model=RestfulModel, summary="识别上传文件", description="仅接受 .jpg/.jpeg/.png（大小写不敏感）；以实际解码为准，解码失败返回 400。")
-async def predict_by_file(
+def predict_by_file(
         file: UploadFile,
         ocr_det: bool = True,
         ocr_cls: bool = True,
@@ -90,7 +92,9 @@ async def predict_by_file(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"请上传 {ALLOWED_FILE_EXTENSIONS_LABEL} 格式图片"
         )
-    file_bytes = await file.read()
+    # Synchronous path operations run in FastAPI's worker threadpool. Keep
+    # decoding/inference there rather than blocking the ASGI event loop.
+    file_bytes = file.file.read()
     # 校验 2：实际内容解码校验，不信任扩展名/MIME；解码失败返回受控 400 而非 500
     img = bytes_to_ndarray(file_bytes)
     if img is None:
@@ -108,12 +112,12 @@ async def predict_by_file(
 
 
 @router.get('/predict-by-url', response_model=RestfulModel, summary="识别图片 URL", description="仅接受 JPEG/PNG 内容（以魔数及解码为准），解码失败返回 400。")
-async def predict_by_url(
+def predict_by_url(
         imageUrl: str,
         ocr_det: bool = True,
         ocr_cls: bool = True,
         ocr_backend=Depends(get_ocr_backend)):
-    response = requests.get(imageUrl)
+    response = requests.get(imageUrl, timeout=URL_TIMEOUT_SECONDS)
     image_bytes = response.content
     # 仅处理 JPEG/PNG：先以魔数快速过滤，最终以解码结果为准
     if not (image_bytes.startswith(b"\xff\xd8\xff") or image_bytes.startswith(b"\x89PNG\r\n\x1a\n")):

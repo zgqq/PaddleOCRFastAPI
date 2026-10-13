@@ -85,7 +85,11 @@ def test_url_endpoint_preserves_legacy_response_contract(monkeypatch):
     class ImageResponse:
         content = open("screenshots/Swagger.png", "rb").read()
 
-    monkeypatch.setattr("routers.ocr.requests.get", lambda url: ImageResponse())
+    def get_image(url, *, timeout):
+        assert timeout == (5, 30)
+        return ImageResponse()
+
+    monkeypatch.setattr("routers.ocr.requests.get", get_image)
     client = TestClient(create_app(FakeOCRBackend()))
 
     response = client.get(
