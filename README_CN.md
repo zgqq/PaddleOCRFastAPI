@@ -43,9 +43,18 @@
 }
 ```
 
+空检测页保留旧兼容结构：`{"resultcode": 200, "message": "Success", "data": [null]}`（上传接口的 `message` 仍为文件名）。它不是错误，也不是 `[]`。
+
+## 执行与 URL 等待边界
+
+file/url 与 path/base64 接口均使用同步 FastAPI path operation，在框架线程池运行文件读取、网络、解码和推理，不占用 ASGI 事件循环等待。RapidOCR MPS 的 backend `max_concurrency=1` 保持不变：事件循环可服务其他请求，不代表 GPU 推理并行。
+
+URL 请求设置 5 秒连接 timeout、30 秒 socket 读取无数据 timeout；这是 Requests 的 connect/read-inactivity 预算，不是整个下载或推理的墙钟总 deadline，也不表示客户端断开会取消正在运行的同步推理。
+
 ## 兼容边界
 
 - HTTP路径、请求参数、外层字段、文字框/文本/置信度结构兼容旧版。
+- `ocr_cls` 参数仍被接受，但 CPU `ocr_det=false` 分支直接调用 `TextRecognition.predict(image)`，不消费该分类选项；RapidOCR MPS 会转发 `use_cls`。不能把 recognition-only 的参数接受解释为 CPU 分类已执行。
 - PP-OCRv4升级为PP-OCRv6后，检测框、文本、置信度和行顺序可能变化，不保证响应逐字节一致。
 - 本实现仅切换后端，不改变HTTP路径及外层响应结构；MPS后端的识别结果、分数、行序可能不同。
 - `OCR_BACKEND` 默认 `paddle`；只有显式设置 `rapidocr-mps` 才会引入 RapidOCR/PyTorch，未知值直接报错。不同依赖请使用隔离虚拟环境，不要将两套依赖混装进生产运行时。

@@ -125,7 +125,7 @@ def test_url_invalid_decoded_content_returns_400(monkeypatch):
         # JPEG magic but following bytes are corrupted / not decodable
         content = b"\xff\xd8\xff" + b"not-an-image"
 
-    monkeypatch.setattr("routers.ocr.requests.get", lambda url: FakeResponse())
+    monkeypatch.setattr("routers.ocr.requests.get", lambda url, **kwargs: FakeResponse())
     client = TestClient(create_app(MustNotBeCalledBackend()))
     resp = client.get("/ocr/predict-by-url", params={"imageUrl": "https://example.test/bad.jpg"})
     assert resp.status_code == 400
@@ -136,7 +136,7 @@ def test_url_non_image_magic_returns_400(monkeypatch):
     class FakeResponse:
         content = b"plain text not image"
 
-    monkeypatch.setattr("routers.ocr.requests.get", lambda url: FakeResponse())
+    monkeypatch.setattr("routers.ocr.requests.get", lambda url, **kwargs: FakeResponse())
     client = TestClient(create_app(FakeOCRBackend()))
     resp = client.get("/ocr/predict-by-url", params={"imageUrl": "https://example.test/bad.txt"})
     assert resp.status_code == 400
